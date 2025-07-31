@@ -168,7 +168,7 @@ const ScriptList: React.FC<ScriptListProps> = ({
                     </p>
                   )}
                   <div className="flex items-center space-x-2 mt-2 text-xs text-gray-500">
-                    <span>v{script.version}</span>
+                    <span>v</span>
                     {script.isActive && (
                       <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">
                         アクティブ
