@@ -6,6 +6,7 @@ import PublicRoute from './components/routing/PublicRoute';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ChatPage from './pages/ChatPage';
+import ScriptPage from './pages/ScriptPage';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 
@@ -50,14 +51,12 @@ function App() {
             }
           />
 
-          {/* Other protected routes (with layout) */}
+          {/* Script routes (full screen layout) */}
           <Route
             path="/scripts"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <DashboardPage />
-                </Layout>
+                <ScriptPage />
               </ProtectedRoute>
             }
           />
@@ -65,12 +64,12 @@ function App() {
             path="/scripts/:scriptId"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <DashboardPage />
-                </Layout>
+                <ScriptPage />
               </ProtectedRoute>
             }
           />
+
+          {/* Other protected routes (with layout) */}
           <Route
             path="/members"
             element={

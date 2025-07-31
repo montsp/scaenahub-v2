@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Channel } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import NavigationMenu from '../components/layout/NavigationMenu';
 import ChannelList from '../components/chat/ChannelList';
 import MessageList from '../components/chat/MessageList';
 import MessageInput from '../components/chat/MessageInput';
@@ -29,7 +30,10 @@ const ChatPage: React.FC = () => {
 
   return (
     <div className="h-screen flex bg-gray-50 overflow-hidden">
-      {/* Sidebar - Channel List */}
+      {/* Navigation Menu */}
+      <NavigationMenu />
+      
+      {/* Channel List Sidebar */}
       <div className={`${sidebarWidth} bg-white border-r border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ease-in-out`}>
         <ChannelList
           selectedChannelId={selectedChannel?.id}

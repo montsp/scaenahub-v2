@@ -234,8 +234,8 @@ router.get('/:id/lines', [
 router.post('/:id/lines', [
   param('id').isUUID().withMessage('Invalid script ID'),
   body('lineNumber')
-    .isInt({ min: 1, max: 10000 })
-    .withMessage('Line number must be between 1 and 10000'),
+    .isInt({ min: 1, max: 50000 })
+    .withMessage('Line number must be between 1 and 50000'),
   body('characterName')
     .optional()
     .isLength({ max: 100 })

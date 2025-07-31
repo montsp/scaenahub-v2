@@ -182,7 +182,7 @@ router.post('/logout', AuthMiddleware.authenticate, (req: Request, res: Response
 router.get('/me', AuthMiddleware.authenticate, (req: Request, res: Response) => {
   res.json({
     success: true,
-    data: { user: req.user },
+    data: req.user,
     message: 'User information retrieved successfully'
   });
 });

@@ -234,17 +234,17 @@ class ApiService {
   }
 
   // Script endpoints
-  async getScripts(): Promise<ApiResponse<Script[]>> {
+  getScripts = async (): Promise<ApiResponse<Script[]>> => {
     const response: AxiosResponse<ApiResponse<Script[]>> = await this.api.get('/scripts');
     return response.data;
   }
 
-  async getScript(scriptId: string): Promise<ApiResponse<Script>> {
+  getScript = async (scriptId: string): Promise<ApiResponse<Script>> => {
     const response: AxiosResponse<ApiResponse<Script>> = await this.api.get(`/scripts/${scriptId}`);
     return response.data;
   }
 
-  async createScript(data: Partial<Script>): Promise<ApiResponse<Script>> {
+  createScript = async (data: Partial<Script>): Promise<ApiResponse<Script>> => {
     const response: AxiosResponse<ApiResponse<Script>> = await this.api.post('/scripts', data);
     return response.data;
   }
@@ -260,23 +260,23 @@ class ApiService {
   }
 
   // Script lines
-  async getScriptLines(scriptId: string): Promise<ApiResponse<ScriptLine[]>> {
+  getScriptLines = async (scriptId: string): Promise<ApiResponse<ScriptLine[]>> => {
     const response: AxiosResponse<ApiResponse<ScriptLine[]>> = await this.api.get(`/scripts/${scriptId}/lines`);
     return response.data;
   }
 
-  async createScriptLine(scriptId: string, data: Partial<ScriptLine>): Promise<ApiResponse<ScriptLine>> {
+  createScriptLine = async (scriptId: string, data: Partial<ScriptLine>): Promise<ApiResponse<ScriptLine>> => {
     const response: AxiosResponse<ApiResponse<ScriptLine>> = await this.api.post(`/scripts/${scriptId}/lines`, data);
     return response.data;
   }
 
-  async updateScriptLine(lineId: string, data: Partial<ScriptLine>): Promise<ApiResponse<ScriptLine>> {
-    const response: AxiosResponse<ApiResponse<ScriptLine>> = await this.api.put(`/script-lines/${lineId}`, data);
+  updateScriptLine = async (scriptId: string, lineNumber: number, data: Partial<ScriptLine>): Promise<ApiResponse<ScriptLine>> => {
+    const response: AxiosResponse<ApiResponse<ScriptLine>> = await this.api.put(`/scripts/${scriptId}/lines/${lineNumber}`, data);
     return response.data;
   }
 
-  async deleteScriptLine(lineId: string): Promise<ApiResponse> {
-    const response: AxiosResponse<ApiResponse> = await this.api.delete(`/script-lines/${lineId}`);
+  async deleteScriptLine(scriptId: string, lineNumber: number): Promise<ApiResponse> {
+    const response: AxiosResponse<ApiResponse> = await this.api.delete(`/scripts/${scriptId}/lines/${lineNumber}`);
     return response.data;
   }
 

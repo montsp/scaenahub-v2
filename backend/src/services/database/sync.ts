@@ -324,8 +324,11 @@ export class DataSyncService {
   }
 
   public async writeData(tableName: string, operation: 'INSERT' | 'UPDATE' | 'DELETE', recordId: string, data: any): Promise<void> {
+    // データをサニタイズ（undefinedをnullに変換）
+    const sanitizedData = this.sanitizeDataForDatabase(data);
+    
     // JSONフィールドのデフォルト値を適用
-    const processedData = operation === 'INSERT' ? this.applyDefaultValues(tableName, data) : data;
+    const processedData = operation === 'INSERT' ? this.applyDefaultValues(tableName, sanitizedData) : sanitizedData;
     
     const syncOp: SyncOperation = {
       id: uuidv4(),
@@ -370,6 +373,10 @@ export class DataSyncService {
           const insertPlaceholders = insertColumns.map(() => '?').join(', ');
           const insertValues = insertColumns.map(col => {
             const value = data[col];
+            // Convert undefined to null
+            if (value === undefined) {
+              return null;
+            }
             if (typeof value === 'boolean') {
               return value ? 1 : 0;
             }
@@ -387,6 +394,10 @@ export class DataSyncService {
           const updateSet = updateColumns.map(col => `${col} = ?`).join(', ');
           const updateValues = updateColumns.map(col => {
             const value = data[col];
+            // Convert undefined to null
+            if (value === undefined) {
+              return null;
+            }
             if (typeof value === 'boolean') {
               return value ? 1 : 0;
             }
@@ -419,6 +430,10 @@ export class DataSyncService {
           const insertPlaceholders = insertColumns.map(() => '?').join(', ');
           const insertValues = insertColumns.map(col => {
             const value = data[col];
+            // Convert undefined to null
+            if (value === undefined) {
+              return null;
+            }
             // Convert objects to JSON strings for TiDB
             if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
               return JSON.stringify(value);
@@ -437,6 +452,10 @@ export class DataSyncService {
           const updateSet = updateColumns.map(col => `${col} = ?`).join(', ');
           const updateValues = updateColumns.map(col => {
             const value = data[col];
+            // Convert undefined to null
+            if (value === undefined) {
+              return null;
+            }
             // Convert objects to JSON strings for TiDB
             if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
               return JSON.stringify(value);
@@ -643,6 +662,28 @@ export class DataSyncService {
     return new Blob([jsonString]).size;
   }
 
+  // データベース用にデータをサニタイズ（undefinedをnullに変換）
+  private sanitizeDataForDatabase(data: any): any {
+    if (data === undefined) {
+      return null;
+    }
+    
+    if (data === null || typeof data !== 'object') {
+      return data;
+    }
+    
+    if (Array.isArray(data)) {
+      return data.map(item => this.sanitizeDataForDatabase(item));
+    }
+    
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      sanitized[key] = this.sanitizeDataForDatabase(value);
+    }
+    
+    return sanitized;
+  }
+
   // キャッシュ退避が必要かチェック
   private shouldEvictCache(newDataSize: number): boolean {
     const currentMemoryUsage = this.getCurrentMemoryUsage();
@@ -728,6 +769,9 @@ export class DataSyncService {
     const insertIndex = this.findInsertIndex(syncOp.priority);
     this.syncQueue.splice(insertIndex, 0, syncOp);
     
+    // データからundefinedを除去してnullに変換
+    const sanitizedData = this.sanitizeDataForDatabase(syncOp.data);
+    
     // SQLiteの同期キューテーブルにも保存
     this.sqlite.execute(
       'INSERT INTO sync_queue (id, operation, table_name, record_id, data, priority, retry_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -736,7 +780,7 @@ export class DataSyncService {
         syncOp.operation,
         syncOp.tableName,
         syncOp.recordId,
-        JSON.stringify(syncOp.data),
+        JSON.stringify(sanitizedData),
         syncOp.priority,
         syncOp.retryCount,
         syncOp.timestamp.toISOString()

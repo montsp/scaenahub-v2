@@ -1,7 +1,6 @@
 import React, { ReactNode } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import Sidebar from './Sidebar';
-import Header from './Header';
+import NavigationMenu from './NavigationMenu';
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,15 +11,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   if (!isAuthenticated) {
     return (
-      <div className="h-screen bg-secondary-50 overflow-hidden">
+      <div className="h-screen bg-gray-50 overflow-hidden">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-secondary-50 overflow-hidden">
-      {children}
+    <div className="h-screen bg-gray-50 overflow-hidden flex">
+      {/* Navigation Menu */}
+      <NavigationMenu />
+      
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 };

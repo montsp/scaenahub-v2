@@ -19,7 +19,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
   sidebarCollapsed = false,
   className = '',
 }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<ChannelCategory[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -144,15 +144,15 @@ const ChannelList: React.FC<ChannelListProps> = ({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">チャンネル</h2>
+      <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+        <h3 className="text-sm font-medium text-gray-700 uppercase tracking-wide">チャンネル</h3>
         {canCreateChannels && (
           <button
             onClick={() => setIsCreating(true)}
-            className="p-1 text-gray-500 hover:text-gray-700 transition-colors duration-200"
+            className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
             title="新しいチャンネルを作成"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
           </button>
@@ -246,37 +246,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
         </div>
       </div>
 
-      {/* User Info Footer */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
-                  {(user?.profile?.displayName || user?.username || 'U').charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">
-                  {user?.profile?.displayName || user?.username}
-                </p>
-                <p className="text-xs text-gray-500">
-                  ScaenaHub v2
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={logout}
-              className="p-1 text-gray-500 hover:text-red-600 transition-colors duration-200"
-              title="ログアウト"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 };

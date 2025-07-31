@@ -1,0 +1,504 @@
+/* 通常表示時のスタイル */
+.print-only-tables {
+  display: none !important;
+}
+
+.screen-only-table {
+  display: table !important;
+}
+
+/* 印刷用スタイル */
+@media print {
+
+  /* 基本設定 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body {
+    font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+    font-size: 12pt;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+  }
+
+  /* ページ設定 */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 10mm 15mm 10mm;
+  }
+
+  /* 印刷時の全体レイアウト */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .script-viewer {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* 不要な要素を非表示 */
+  .no-print,
+  nav,
+  .sidebar,
+  .navigation-menu,
+  button:not(.print-button),
+  .header,
+  .footer,
+  .scroll-indicator,
+  .loading,
+  .error-message,
+  .script-list,
+  .script-page>div:first-child {
+    display: none !important;
+  }
+
+  /* 印刷時は脚本ビューアーのみ表示 */
+  .script-page {
+    display: block !important;
+  }
+
+  .script-page .script-viewer {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 操作ボタンと操作列を印刷時に非表示 */
+  .script-table button,
+  .script-table .no-print,
+  .script-table th.no-print,
+  .script-table td.no-print {
+    display: none !important;
+  }
+
+  /* プレースホルダーテキストを印刷時に完全非表示 */
+  .script-table input::placeholder,
+  .script-table textarea::placeholder {
+    color: transparent !important;
+    opacity: 0 !important;
+  }
+
+  /* 空のセルの内容を非表示 */
+  .script-table td:empty::after {
+    content: '' !important;
+  }
+
+  /* プレースホルダーテキストを完全に非表示 - 最強版 */
+  .script-table-container .placeholder-text,
+  .script-table-main .placeholder-text,
+  .script-table-secondary .placeholder-text,
+  .script-table-container .text-gray-400,
+  .script-table-container span.text-gray-400,
+  .script-table-container span.italic,
+  .script-table-container span[class*="gray"],
+  .script-table-main span,
+  .script-table-secondary span,
+  .script-table-container span,
+  .script-table-container .script-cell span {
+    display: none !important;
+    visibility: hidden !important;
+    color: transparent !important;
+    opacity: 0 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+
+  /* 実際のテキストのみ表示 - 直接のテキストノード */
+  .script-table-container .script-cell {
+    font-size: inherit !important;
+    line-height: inherit !important;
+    color: inherit !important;
+  }
+
+  /* 空でないセルの直接テキストのみ表示 */
+  .script-table-main .script-cell:not(:empty),
+  .script-table-secondary .script-cell:not(:empty) {
+    font-size: inherit !important;
+    color: inherit !important;
+  }
+
+  /* 空のセルは空白のまま */
+  .script-table-container .script-cell:empty {
+    min-height: 15pt !important;
+  }
+
+  /* 実際のテキストコンテンツのみ表示 */
+  .script-table-main .script-cell,
+  .script-table-secondary .script-cell {
+    font-size: inherit !important;
+    line-height: inherit !important;
+    color: inherit !important;
+  }
+
+  /* シンプルな印刷用テーブル */
+  .script-table-print {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: 1px solid #000 !important;
+    page-break-inside: avoid;
+  }
+
+  /* 印刷時はシンプルテーブルを表示、通常テーブルを非表示 */
+  .print-only-tables {
+    display: table !important;
+  }
+
+  .screen-only-table {
+    display: none !important;
+  }
+
+  /* ヘッダー行のスタイル */
+  .script-table-print th {
+    border-top: 1px solid #000 !important;
+    border-bottom: 1px solid #000 !important;
+    border-left: 1px solid #000 !important;
+    border-right: 1px solid #000 !important;
+    background-color: #f8f8f8 !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    font-size: 10pt !important;
+    padding: 6pt 2pt !important;
+    vertical-align: middle !important;
+    height: 30pt !important;
+    line-height: 1.2 !important;
+  }
+
+  /* データ行のスタイル - 行境界線なし */
+  .script-table-print tbody tr {
+    page-break-inside: avoid !important;
+  }
+
+  .script-table-print td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000 !important;
+    border-right: 1px solid #000 !important;
+    padding: 3pt 4pt !important;
+    vertical-align: top !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    min-height: 15pt !important;
+  }
+
+  /* 1、2列目：行の高さを決定する主要列 */
+  .script-table-print .character-column,
+  .script-table-print .dialogue-column {
+    height: auto !important;
+    white-space: normal !important;
+  }
+
+  /* 列幅の設定 */
+  .script-table-print .character-column {
+    width: 12% !important;
+    font-weight: bold !important;
+    font-size: 10pt !important;
+  }
+
+  .script-table-print .dialogue-column {
+    width: 58% !important;
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
+  }
+
+  /* 3〜5列目：行の高さに影響しない設定 */
+  .script-table-print .lighting-column,
+  .script-table-print .audio-video-column,
+  .script-table-print .notes-column {
+    width: 10% !important;
+    font-size: 7pt !important;
+    color: #333 !important;
+    line-height: 1.0 !important;
+    overflow: hidden !important;
+    word-wrap: break-word !important;
+    word-break: break-all !important;
+    vertical-align: top !important;
+    position: relative !important;
+  }
+
+  /* 従属列の高さを親行に制限 */
+  .script-table-print tbody tr {
+    overflow: hidden !important;
+  }
+
+  .script-table-print .lighting-column,
+  .script-table-print .audio-video-column,
+  .script-table-print .notes-column {
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    display: table-cell !important;
+  }
+
+  /* ヘッダーの列幅を正確に指定 */
+  .script-table-header th:nth-child(1) {
+    width: 14% !important;
+  }
+
+  /* 登場人物名 */
+  .script-table-header th:nth-child(2) {
+    width: 56% !important;
+  }
+
+  /* 台詞 */
+  .script-table-header th:nth-child(3) {
+    width: 10% !important;
+  }
+
+  /* 照明 */
+  .script-table-header th:nth-child(4) {
+    width: 10% !important;
+  }
+
+  /* 音響・映像 */
+  .script-table-header th:nth-child(5) {
+    width: 10% !important;
+  }
+
+  /* 備考 */
+
+  /* データ行のスタイル - 行境界線なし、高さ同期 */
+  .script-table-main tbody tr,
+  .script-table-secondary tbody tr {
+    page-break-inside: avoid !important;
+    min-height: 15pt !important;
+  }
+
+  .script-table-main td,
+  .script-table-secondary td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000 !important;
+    border-right: 1px solid #000 !important;
+    padding: 3pt 4pt !important;
+    vertical-align: top !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    min-height: 15pt !important;
+  }
+
+  /* 主要テーブルの列スタイル - ヘッダーと完全同期 */
+  .script-table-main .character-column {
+    width: 20% !important;
+    /* 14% / 70% = 20% */
+    text-align: left !important;
+    font-weight: bold !important;
+    font-size: 10pt !important;
+  }
+
+  .script-table-main .dialogue-column {
+    width: 80% !important;
+    /* 56% / 70% = 80% */
+    text-align: left !important;
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
+  }
+
+  /* 従属テーブルの列スタイル - ヘッダーと完全同期 */
+  .script-table-secondary .lighting-column,
+  .script-table-secondary .audio-video-column,
+  .script-table-secondary .notes-column {
+    width: 33.33% !important;
+    /* 10% / 30% = 33.33% */
+    text-align: left !important;
+    font-size: 7pt !important;
+    color: #333 !important;
+    line-height: 1.1 !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* 右表の行の高さ調整 - 長い文章の場合の余白調整 */
+  .script-table-secondary td {
+    min-height: 15pt !important;
+    padding: 2pt 3pt 6pt 3pt !important;
+    word-break: break-all !important;
+  }
+
+  /* 右表の文章が長い場合の特別処理 */
+  .script-table-secondary .script-cell {
+    max-height: 40pt !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* 台詞の色分け（印刷時も保持） */
+  .dialogue-text {
+    color: #000 !important;
+  }
+
+  .action-text {
+    color: #0066cc !important;
+    font-style: italic;
+  }
+
+  /* 改ページ制御 */
+  .script-row {
+    page-break-inside: avoid;
+  }
+
+  .scene-header {
+    page-break-after: avoid;
+    font-weight: bold !important;
+    font-size: 12pt !important;
+    margin-bottom: 8pt !important;
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 4pt !important;
+  }
+
+  /* 脚本ヘッダー（コンパクト化） */
+  .script-header,
+  .print-only {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 8pt;
+    page-break-after: avoid;
+    border-bottom: 1px solid #000;
+    padding-bottom: 4pt;
+  }
+
+  .script-title {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    margin-bottom: 3pt !important;
+  }
+
+  .script-info {
+    font-size: 8pt !important;
+    color: #000 !important;
+    line-height: 1.1 !important;
+  }
+
+  .script-info div {
+    margin-bottom: 1pt !important;
+  }
+
+  /* 印刷時刻は非表示 */
+  .script-info div:last-child {
+    display: none !important;
+  }
+
+  /* ページ番号 */
+  .page-number {
+    position: fixed;
+    bottom: 10mm;
+    right: 10mm;
+    font-size: 9pt;
+    color: #666;
+  }
+
+  /* 長いテキストの処理 */
+  .script-cell {
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    hyphens: auto !important;
+  }
+
+  /* 追加のプレースホルダー非表示処理 */
+  .script-table-container * {
+    color: inherit !important;
+  }
+
+  .script-table-container .script-cell * {
+    display: inline !important;
+    color: inherit !important;
+  }
+
+  /* 灰色テキストを完全に除去 */
+  .script-table-container [style*="color: rgb(156, 163, 175)"],
+  .script-table-container [style*="color: #9ca3af"],
+  .script-table-container [class*="text-gray"] {
+    display: none !important;
+  }
+
+  /* 空のセルの最小高さ */
+  .script-table td:empty::after {
+    content: " ";
+    white-space: pre;
+  }
+
+  /* 印刷時のマージン調整 */
+  .print-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* テーブルが複数ページにまたがる場合のヘッダー繰り返し */
+  .script-table thead {
+    display: table-header-group !important;
+  }
+
+  .script-table tbody {
+    display: table-row-group !important;
+  }
+
+  /* 印刷時の背景色を強制表示 */
+  .script-table th {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  /* フォントサイズの微調整 */
+  .character-name {
+    font-weight: bold !important;
+    font-size: 10pt !important;
+  }
+
+  .dialogue-content {
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+  }
+
+  /* 印刷時のレイアウト調整 */
+  .script-viewer {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 不要なスクロールバーを非表示 */
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* 印刷時の色調整 */
+  .text-blue-600 {
+    color: #0066cc !important;
+  }
+
+  .text-black {
+    color: #000 !important;
+  }
+
+  /* 境界線の調整 */
+  .border {
+    border-color: #000 !important;
+  }
+
+  .border-gray-300 {
+    border-color: #000 !important;
+  }
+
+  /* 印刷時のパディング調整 */
+  .p-2 {
+    padding: 4pt !important;
+  }
+
+  .p-4 {
+    padding: 6pt !important;
+  }
+}

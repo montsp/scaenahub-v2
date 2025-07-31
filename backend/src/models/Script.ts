@@ -99,6 +99,7 @@ export class ScriptModel {
       updatedAt: now
     };
     
+    // Only set description if it's provided
     if (scriptData.description) {
       script.description = scriptData.description;
     }

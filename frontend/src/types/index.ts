@@ -171,8 +171,13 @@ export interface Script {
   id: string;
   title: string;
   description?: string;
-  version: number;
   isActive: boolean;
+  permissions: {
+    viewRoles: string[];
+    editRoles: string[];
+    viewUsers: string[];
+    editUsers: string[];
+  };
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -183,12 +188,18 @@ export interface ScriptLine {
   id: string;
   scriptId: string;
   lineNumber: number;
-  character: string;
+  characterName: string;
   dialogue: string;
   lighting: string;
   audioVideo: string;
   notes: string;
-  isDialogue: boolean;
+  formatting: {
+    bold: boolean;
+    underline: boolean;
+    italic: boolean;
+    color: string;
+  };
+  lastEditedBy: string;
   createdAt: Date;
   updatedAt: Date;
 }

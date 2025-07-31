@@ -71,13 +71,13 @@ export class ScriptService {
   }): Promise<Script> {
     const script = ScriptModel.create(scriptData);
 
-    // データベースに保存
+    // データベースに保存（undefinedをnullに変換）
     await this.syncService.writeData('scripts', 'INSERT', script.id, {
       id: script.id,
       title: script.title,
-      description: script.description,
+      description: script.description || null,
       is_active: script.isActive,
-      permissions: JSON.stringify(script.permissions),
+      permissions: JSON.stringify(script.permissions || {}),
       created_by: script.createdBy,
       created_at: script.createdAt.toISOString(),
       updated_at: script.updatedAt.toISOString()
@@ -125,9 +125,9 @@ export class ScriptService {
     // データベース更新
     await this.syncService.writeData('scripts', 'UPDATE', scriptId, {
       title: updatedScript.title,
-      description: updatedScript.description,
+      description: updatedScript.description || null,
       is_active: updatedScript.isActive,
-      permissions: JSON.stringify(updatedScript.permissions),
+      permissions: JSON.stringify(updatedScript.permissions || {}),
       updated_at: updatedScript.updatedAt.toISOString()
     });
 
@@ -221,8 +221,8 @@ export class ScriptService {
       lighting: scriptLine.lighting || '',
       audio_video: scriptLine.audioVideo || '',
       notes: scriptLine.notes || '',
-      formatting: JSON.stringify(scriptLine.formatting),
-      last_edited_by: scriptLine.lastEditedBy,
+      formatting: JSON.stringify(scriptLine.formatting || {}),
+      last_edited_by: scriptLine.lastEditedBy || '',
       created_at: scriptLine.createdAt.toISOString(),
       updated_at: scriptLine.updatedAt.toISOString()
     });
@@ -281,13 +281,13 @@ export class ScriptService {
 
     // データベース更新
     await this.syncService.writeData('script_lines', 'UPDATE', existingLine.id, {
-      character_name: updatedLine.characterName,
-      dialogue: updatedLine.dialogue,
-      lighting: updatedLine.lighting,
-      audio_video: updatedLine.audioVideo,
-      notes: updatedLine.notes,
-      formatting: JSON.stringify(updatedLine.formatting),
-      last_edited_by: updatedLine.lastEditedBy,
+      character_name: updatedLine.characterName || '',
+      dialogue: updatedLine.dialogue || '',
+      lighting: updatedLine.lighting || '',
+      audio_video: updatedLine.audioVideo || '',
+      notes: updatedLine.notes || '',
+      formatting: JSON.stringify(updatedLine.formatting || {}),
+      last_edited_by: updatedLine.lastEditedBy || '',
       updated_at: updatedLine.updatedAt.toISOString()
     });
 
@@ -482,7 +482,7 @@ export class ScriptService {
       script_id: version.scriptId,
       version: version.version,
       title: version.title,
-      description: version.description,
+      description: version.description || null,
       change_description: version.changeDescription,
       created_by: version.createdBy,
       created_at: version.createdAt.toISOString()
@@ -545,14 +545,14 @@ export class ScriptService {
       script_line_id: history.scriptLineId,
       script_id: history.scriptId,
       line_number: history.lineNumber,
-      character_name: history.characterName,
-      dialogue: history.dialogue,
-      lighting: history.lighting,
-      audio_video: history.audioVideo,
-      notes: history.notes,
-      formatting: JSON.stringify(history.formatting),
+      character_name: history.characterName || '',
+      dialogue: history.dialogue || '',
+      lighting: history.lighting || '',
+      audio_video: history.audioVideo || '',
+      notes: history.notes || '',
+      formatting: JSON.stringify(history.formatting || {}),
       change_type: history.changeType,
-      change_description: history.changeDescription,
+      change_description: history.changeDescription || null,
       edited_by: history.editedBy,
       edited_at: history.editedAt.toISOString()
     });
@@ -780,7 +780,7 @@ export class ScriptService {
       script_id: scene.scriptId,
       scene_number: scene.sceneNumber,
       title: scene.title,
-      description: scene.description,
+      description: scene.description || null,
       start_line_number: scene.startLineNumber,
       end_line_number: scene.endLineNumber,
       created_by: scene.createdBy,
