@@ -529,4 +529,61 @@ router.post('/search/advanced', [
   }
 });
 
+// ユーザー検索（メンション用）
+router.get('/search', [
+  query('query')
+    .optional()
+    .isLength({ max: 50 })
+    .withMessage('Search query must be 50 characters or less')
+], async (req: Request, res: Response): Promise<void> => {
+  try {
+    // バリデーションエラーチェック
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
+      return;
+    }
+
+    const { query: searchQuery } = req.query;
+    const searchTerm = searchQuery as string || '';
+
+    // SQLiteServiceを直接使用
+    const sqliteService = require('../services/database/sqlite').SQLiteService.getInstance();
+    
+    // ユーザー検索（ユーザー名と表示名で検索）
+    const users = sqliteService.query(
+      `SELECT id, username, display_name, avatar, online_status
+       FROM users_cache
+       WHERE (username LIKE ? OR display_name LIKE ?) 
+       AND is_active = 1
+       ORDER BY username ASC
+       LIMIT 10`,
+      [`%${searchTerm}%`, `%${searchTerm}%`]
+    );
+
+    const formattedUsers = users.map((user: any) => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name || user.username,
+      avatarUrl: user.avatar,
+      onlineStatus: user.online_status || 'offline'
+    }));
+
+    res.json({
+      success: true,
+      data: formattedUsers
+    });
+  } catch (error) {
+    console.error('User search error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'User search failed'
+    });
+  }
+});
+
 export default router;

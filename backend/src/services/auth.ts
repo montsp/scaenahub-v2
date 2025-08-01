@@ -270,7 +270,7 @@ export class AuthService {
   }
 
   public async getUserById(userId: string): Promise<User | null> {
-    const users = this.syncService.readData<any>('users', 'SELECT * FROM users_cache WHERE id = ?', [userId]);
+    const users = this.syncService.readData<any>('users', 'SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache WHERE id = ?', [userId]);
     
     if (users.length === 0) {
       return null;

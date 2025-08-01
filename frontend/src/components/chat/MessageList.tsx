@@ -4,10 +4,17 @@ import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../hooks/useSocket';
 import { useApi } from '../../hooks/useApi';
+import MarkdownMessage from './MarkdownMessage';
+import ReactionPicker from './ReactionPicker';
+import ThreadView from './ThreadView';
 
 interface MessageListProps {
   channelId: string;
   className?: string;
+}
+
+interface EnhancedMessageListProps extends MessageListProps {
+  onThreadOpen?: (message: Message) => void;
 }
 
 interface MessageItemProps {
@@ -16,6 +23,7 @@ interface MessageItemProps {
   onEdit?: (messageId: string, content: string) => void;
   onDelete?: (messageId: string) => void;
   onReaction?: (messageId: string, emoji: string) => void;
+  onThreadOpen?: (message: Message) => void;
 }
 
 const MessageItem: React.FC<MessageItemProps> = ({
@@ -24,10 +32,13 @@ const MessageItem: React.FC<MessageItemProps> = ({
   onEdit,
   onDelete,
   onReaction,
+  onThreadOpen,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showActions, setShowActions] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const reactionButtonRef = useRef<HTMLButtonElement>(null);
 
   const isOwnMessage = message.userId === currentUser.id;
   const canEdit = isOwnMessage || currentUser.roles?.includes('admin') || currentUser.roles?.includes('moderator');
@@ -115,8 +126,21 @@ const MessageItem: React.FC<MessageItemProps> = ({
             </div>
           ) : (
             <div className="text-sm text-gray-800">
-              {message.content}
+              <MarkdownMessage content={message.content} />
             </div>
+          )}
+
+          {/* Thread info */}
+          {message.replyCount && message.replyCount > 0 && (
+            <button
+              onClick={() => onThreadOpen?.(message)}
+              className="mt-2 flex items-center space-x-2 px-3 py-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              <span>{message.replyCount} 件の返信</span>
+            </button>
           )}
 
           {/* Reactions */}
@@ -139,6 +163,40 @@ const MessageItem: React.FC<MessageItemProps> = ({
         {/* Message Actions */}
         {showActions && (
           <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="relative">
+              <button
+                ref={reactionButtonRef}
+                onClick={() => setShowReactionPicker(!showReactionPicker)}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                title="リアクション"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              
+              {showReactionPicker && (
+                <ReactionPicker
+                  onEmojiSelect={(emoji) => {
+                    onReaction?.(message.id, emoji);
+                    setShowReactionPicker(false);
+                  }}
+                  onClose={() => setShowReactionPicker(false)}
+                  triggerRef={reactionButtonRef}
+                />
+              )}
+            </div>
+            
+            <button
+              onClick={() => onThreadOpen?.(message)}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              title="スレッドで返信"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+            </button>
+            
             {canEdit && (
               <button
                 onClick={() => setIsEditing(true)}
@@ -150,6 +208,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 </svg>
               </button>
             )}
+            
             {canDelete && (
               <button
                 onClick={() => onDelete?.(message.id)}
@@ -168,14 +227,16 @@ const MessageItem: React.FC<MessageItemProps> = ({
   );
 };
 
-const MessageList: React.FC<MessageListProps> = ({ 
+const MessageList: React.FC<EnhancedMessageListProps> = ({ 
   channelId, 
-  className = '' 
+  className = '',
+  onThreadOpen
 }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [selectedThread, setSelectedThread] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -196,6 +257,13 @@ const MessageList: React.FC<MessageListProps> = ({
       console.log('📨 MessageList received new message:', message);
       console.log('📨 Message channel:', message.channelId, 'Current channel:', channelId);
       console.log('📨 Message user info:', message.user);
+      
+      // スレッドメッセージ（parentIdが存在するメッセージ）は通常のメッセージリストに表示しない
+      if (message.parentId) {
+        console.log('📨 Thread message detected, skipping from main message list:', message.id);
+        return;
+      }
+      
       if (message.channelId === channelId) {
         setMessages((prev: Message[]) => {
           // Avoid duplicates by checking if message already exists
@@ -365,18 +433,24 @@ const MessageList: React.FC<MessageListProps> = ({
     }
   }, [user?.id]);
 
+  const handleThreadOpen = useCallback((message: Message) => {
+    setSelectedThread(message);
+    onThreadOpen?.(message);
+  }, [onThreadOpen]);
+
   if (!user) {
     return <div className={`flex items-center justify-center ${className}`}>認証が必要です</div>;
   }
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div className={`flex h-full ${className}`}>
       {/* Messages Container */}
-      <div
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto"
-        onScroll={handleScroll}
-      >
+      <div className={`flex flex-col ${selectedThread ? 'w-1/2' : 'w-full'} transition-all duration-300`}>
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto"
+          onScroll={handleScroll}
+        >
         {/* Load More Button */}
         {hasMore && messages.length > 0 && (
           <div className="p-4 text-center">
@@ -417,6 +491,7 @@ const MessageList: React.FC<MessageListProps> = ({
                 onEdit={handleEditMessage}
                 onDelete={handleDeleteMessage}
                 onReaction={handleReaction}
+                onThreadOpen={handleThreadOpen}
               />
             ))}
           </div>
@@ -438,7 +513,19 @@ const MessageList: React.FC<MessageListProps> = ({
 
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
+        </div>
       </div>
+
+      {/* Thread View */}
+      {selectedThread && (
+        <div className="w-1/2 border-l border-gray-200">
+          <ThreadView
+            parentMessage={selectedThread}
+            onClose={() => setSelectedThread(null)}
+            className="h-full"
+          />
+        </div>
+      )}
     </div>
   );
 };

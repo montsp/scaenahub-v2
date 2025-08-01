@@ -1,0 +1,40 @@
+/* ReactionPicker specific styles */
+.emoji-picker-container {
+  position: relative;
+  z-index: 1000;
+}
+
+.emoji-picker-container .EmojiPickerReact {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.emoji-picker-container .EmojiPickerReact .epr-body {
+  border: none !important;
+}
+
+.emoji-picker-container .EmojiPickerReact .epr-header {
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.emoji-picker-container .EmojiPickerReact .epr-search-container {
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+/* Ensure reaction picker appears above other elements */
+.reaction-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  background: transparent;
+  pointer-events: none;
+}
+
+.reaction-picker-content {
+  pointer-events: all;
+  position: relative;
+  z-index: 1000;
+}

@@ -84,6 +84,8 @@ export interface Message {
   isPinned: boolean;
   threadId?: string;
   replyToId?: string;
+  parentId?: string;
+  replyCount?: number;
   attachments?: MessageAttachment[];
   reactions?: MessageReaction[];
   mentions?: string[];

@@ -82,7 +82,7 @@ export class AdminService {
   // Server Settings Management
   public async getServerSettings(): Promise<ServerSettings> {
     const settings = this.syncService.readData<any>('server_settings', 
-      'SELECT * FROM server_settings_cache LIMIT 1'
+      'SELECT id, server_name, description, icon_url, default_role, welcome_channel_id, rules_channel_id, max_members, invite_enabled, public_server, created_at, updated_at FROM server_settings_cache LIMIT 1'
     );
 
     if (settings.length === 0) {
@@ -159,10 +159,10 @@ export class AdminService {
 
   // System Statistics
   public async getSystemStats(): Promise<SystemStats> {
-    const users = this.syncService.readData<any>('users', 'SELECT * FROM users_cache');
-    const channels = this.syncService.readData<any>('channels', 'SELECT * FROM channels_cache');
+    const users = this.syncService.readData<any>('users', 'SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache');
+    const channels = this.syncService.readData<any>('channels', 'SELECT id, name, description, type, category_id, position, is_private, permissions, allowed_roles, allowed_users, settings, created_by, created_at, updated_at FROM channels_cache');
     const messages = this.syncService.readData<any>('messages', 'SELECT COUNT(*) as count FROM messages_cache');
-    const roles = this.syncService.readData<any>('roles', 'SELECT * FROM roles_cache');
+    const roles = this.syncService.readData<any>('roles', 'SELECT id, name, color, position, permissions, is_default, mentionable, created_at, updated_at FROM roles_cache');
 
     // Calculate active users (last seen within 24 hours)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -310,10 +310,10 @@ export class AdminService {
   public async getDashboardOverview() {
     const stats = await this.getSystemStats();
     const recentUsers = this.syncService.readData<any>('users', 
-      'SELECT * FROM users_cache ORDER BY created_at DESC LIMIT 5'
+      'SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache ORDER BY created_at DESC LIMIT 5'
     );
     const recentModerationLogs = this.syncService.readData<any>('moderation_logs', 
-      'SELECT * FROM moderation_logs_cache ORDER BY timestamp DESC LIMIT 10'
+      'SELECT id, action, target_user_id, moderator_id, reason, rule_id, message_id, channel_id, metadata, created_at FROM moderation_logs_cache ORDER BY created_at DESC LIMIT 10'
     );
 
     return {

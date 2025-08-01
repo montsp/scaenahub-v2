@@ -7,6 +7,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile viewport height fix for software keyboards */
+:root {
+  --vh: 1vh;
+}
+
+/* Prevent zoom on input focus on iOS */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Fixed positioning for mobile keyboards */
+.mobile-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+/* Prevent body scroll when mobile menu is open */
+.mobile-menu-open {
+  overflow: hidden;
+}
+
+/* Smooth transitions for layout changes */
+.layout-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Ensure proper touch targets on mobile */
+@media (max-width: 768px) {
+  button, 
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 @layer base {
   html, body, #root {
     @apply h-full overflow-hidden;

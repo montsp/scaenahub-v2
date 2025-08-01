@@ -4,6 +4,15 @@ import { apiService } from '../../services/api';
 import { useApi } from '../../hooks/useApi';
 import { handlePrint, setupPrintEventListeners } from '../../utils/printUtils';
 import ScriptTable from './ScriptTable';
+import FormatToolbar, { FormatType } from './FormatToolbar';
+import ScriptPermissions from './ScriptPermissions';
+import ConflictResolver from './ConflictResolver';
+import ScriptHistory from './ScriptHistory';
+import {
+  Cog6ToothIcon,
+  ClockIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline';
 
 interface ScriptViewerProps {
   script: Script;
@@ -19,6 +28,14 @@ const ScriptViewer: React.FC<ScriptViewerProps> = ({
   const [scriptLines, setScriptLines] = useState<ScriptLine[]>([]);
   const [currentScene, setCurrentScene] = useState('第一場面');
   const [sceneAssignee, setSceneAssignee] = useState('');
+  const [showFormatToolbar, setShowFormatToolbar] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [conflicts, setConflicts] = useState<any[]>([]);
+  const [selectedCell, setSelectedCell] = useState<{
+    lineId: string;
+    field: string;
+  } | null>(null);
   // 編集権限があるユーザーは常に編集可能
 
   const {
@@ -38,6 +55,32 @@ const ScriptViewer: React.FC<ScriptViewerProps> = ({
   // Setup print event listeners
   useEffect(() => {
     setupPrintEventListeners();
+  }, []);
+
+  // Listen for cell selection events
+  useEffect(() => {
+    const handleCellSelection = (event: CustomEvent) => {
+      console.log('Cell selection event received:', event.detail);
+      const { lineId, field } = event.detail;
+      setSelectedCell({ lineId, field });
+    };
+
+    window.addEventListener('cellSelected', handleCellSelection as EventListener);
+    
+    // Clear selection when clicking elsewhere
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.script-cell') && !target.closest('.format-toolbar')) {
+        setSelectedCell(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('cellSelected', handleCellSelection as EventListener);
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, []);
 
   // Update local state when data changes
@@ -95,6 +138,150 @@ const ScriptViewer: React.FC<ScriptViewerProps> = ({
         );
       }
     }
+  };
+
+  // Helper function to strip HTML tags from text
+  const stripHtmlTags = (html: string): string => {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+  };
+
+  // Helper function to get plain text from HTML content
+  const getPlainTextFromHtml = (html: string): string => {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+  };
+
+  // Helper function to calculate text offset in HTML content
+  const getTextOffsetInHtml = (htmlContent: string, plainTextOffset: number): number => {
+    const div = document.createElement('div');
+    div.innerHTML = htmlContent;
+    
+    let currentOffset = 0;
+    let htmlOffset = 0;
+    
+    const walker = document.createTreeWalker(
+      div,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    let node;
+    while (node = walker.nextNode()) {
+      const nodeLength = node.textContent?.length || 0;
+      if (currentOffset + nodeLength >= plainTextOffset) {
+        // Find the position in the original HTML
+        const range = document.createRange();
+        range.setStart(node, plainTextOffset - currentOffset);
+        range.setEnd(node, plainTextOffset - currentOffset);
+        
+        // This is a simplified approach - in practice, you'd need more complex logic
+        return htmlContent.indexOf(node.textContent || '') + (plainTextOffset - currentOffset);
+      }
+      currentOffset += nodeLength;
+    }
+    
+    return htmlContent.length;
+  };
+
+  const handleFormatApply = (format: FormatType, value?: string) => {
+    console.log('Format apply called:', { format, value, selectedCell });
+    
+    if (!selectedCell) {
+      console.log('No selected cell - showing alert');
+      alert('セルを選択してから書式を適用してください');
+      return;
+    }
+
+    const { lineId, field } = selectedCell;
+    const currentLine = scriptLines.find(line => line.id === lineId);
+    if (!currentLine) {
+      console.log('Current line not found');
+      return;
+    }
+
+    const currentValue = currentLine[field as keyof ScriptLine] as string || '';
+    const plainText = getPlainTextFromHtml(currentValue);
+    console.log('Current value:', currentValue, 'Plain text:', plainText);
+    
+    // Check if format is already applied to the entire cell
+    const cellElement = document.querySelector(`[data-line-id="${lineId}"][data-field="${field}"]`);
+    let isCurrentlyApplied = false;
+    
+    if (cellElement) {
+      const htmlContent = cellElement.innerHTML;
+      console.log('Checking cell format:', format, 'HTML:', htmlContent);
+      
+      switch (format) {
+        case 'bold':
+          isCurrentlyApplied = htmlContent.startsWith('<strong>') && htmlContent.endsWith('</strong>') ||
+                              htmlContent.startsWith('<b>') && htmlContent.endsWith('</b>');
+          break;
+        case 'italic':
+          isCurrentlyApplied = htmlContent.startsWith('<em>') && htmlContent.endsWith('</em>') ||
+                              htmlContent.startsWith('<i>') && htmlContent.endsWith('</i>');
+          break;
+        case 'underline':
+          isCurrentlyApplied = htmlContent.startsWith('<u>') && htmlContent.endsWith('</u>');
+          break;
+        case 'color':
+          isCurrentlyApplied = /^<span[^>]*style="[^"]*color:[^"]*"[^>]*>.*<\/span>$/.test(htmlContent);
+          break;
+        case 'background':
+          isCurrentlyApplied = /^<span[^>]*style="[^"]*background-color:[^"]*"[^>]*>.*<\/span>$/.test(htmlContent);
+          break;
+      }
+      
+      console.log('Format currently applied to cell:', isCurrentlyApplied);
+    }
+
+    let newValue: string;
+
+    // If format is already applied, remove it (toggle off)
+    if (isCurrentlyApplied) {
+      newValue = plainText;
+      console.log('Toggled off formatting, new value:', newValue);
+    } else {
+      // Apply formatting to entire cell content
+      switch (format) {
+        case 'bold':
+          newValue = `<strong>${plainText}</strong>`;
+          break;
+        case 'italic':
+          newValue = `<em>${plainText}</em>`;
+          break;
+        case 'underline':
+          newValue = `<u>${plainText}</u>`;
+          break;
+        case 'color':
+          if (value) {
+            newValue = `<span style="color: ${value}">${plainText}</span>`;
+          } else {
+            newValue = currentValue;
+          }
+          break;
+        case 'background':
+          if (value && value !== 'transparent') {
+            newValue = `<span style="background-color: ${value}">${plainText}</span>`;
+          } else {
+            newValue = currentValue;
+          }
+          break;
+        default:
+          newValue = currentValue;
+      }
+      console.log('Applied formatting to cell, new value:', newValue);
+    }
+
+    // Update the line with formatted text
+    handleLineUpdate(lineId, { [field]: newValue });
+  };
+
+  const handleConflictResolve = (lineId: string, field: string, selectedValue: string) => {
+    handleLineUpdate(lineId, { [field]: selectedValue });
   };
 
   const handleAddLine = async () => {
@@ -213,10 +400,33 @@ const ScriptViewer: React.FC<ScriptViewerProps> = ({
               >
                 印刷
               </button>
+              
               {canEdit && (
-                <div className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-lg">
-                  編集可能
-                </div>
+                <>
+
+                  
+                  <button
+                    onClick={() => setShowPermissions(true)}
+                    className="px-3 py-1 text-sm bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                    title="権限設定"
+                  >
+                    <UserGroupIcon className="h-4 w-4" />
+                    <span>権限</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowHistory(true)}
+                    className="px-3 py-1 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                    title="編集履歴"
+                  >
+                    <ClockIcon className="h-4 w-4" />
+                    <span>履歴</span>
+                  </button>
+                  
+                  <div className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-lg">
+                    編集可能
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -252,6 +462,25 @@ const ScriptViewer: React.FC<ScriptViewerProps> = ({
             </div>
           </div>
         </div>
+        
+        {/* Format Toolbar - Always visible when editing */}
+        {canEdit && (
+          <div className="px-4 py-2 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-gray-800">
+                {selectedCell 
+                  ? `書式設定: セル (${selectedCell.field}) が選択されています`
+                  : '書式設定: セルをクリックしてから書式を適用'
+                }
+              </div>
+            </div>
+            <FormatToolbar
+              onFormatApply={handleFormatApply}
+              selectedCell={selectedCell}
+              className="inline-block"
+            />
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
@@ -295,6 +524,37 @@ const ScriptViewer: React.FC<ScriptViewerProps> = ({
       <div className="page-number" style={{ display: 'none' }}>
         - <span id="page-number"></span> -
       </div>
+
+      {/* Modals */}
+      {showPermissions && (
+        <ScriptPermissions
+          script={script}
+          onClose={() => setShowPermissions(false)}
+          onPermissionsUpdate={() => {
+            // Refresh script data if needed
+            console.log('Permissions updated');
+          }}
+        />
+      )}
+
+      {showHistory && (
+        <ScriptHistory
+          script={script}
+          onClose={() => setShowHistory(false)}
+          onRestore={(versionId) => {
+            // Handle version restore
+            console.log('Restore version:', versionId);
+          }}
+        />
+      )}
+
+      {conflicts.length > 0 && (
+        <ConflictResolver
+          conflicts={conflicts}
+          onResolve={handleConflictResolve}
+          onClose={() => setConflicts([])}
+        />
+      )}
     </div>
   );
 };

@@ -386,7 +386,7 @@ export class ScriptService {
 
   private async loadScriptsFromDatabase(): Promise<void> {
     try {
-      const scripts = this.syncService.readData<any>('scripts', 'SELECT * FROM scripts_cache WHERE is_active = 1');
+      const scripts = this.syncService.readData<any>('scripts', 'SELECT id, title, description, is_active, permissions, created_by, created_at, updated_at FROM scripts_cache WHERE is_active = 1');
       
       this.scriptCache.clear();
       for (const scriptData of scripts) {
@@ -415,7 +415,7 @@ export class ScriptService {
     try {
       const lines = this.syncService.readData<any>(
         'script_lines', 
-        'SELECT * FROM script_lines_cache WHERE script_id = ? ORDER BY line_number',
+        'SELECT id, script_id, line_number, character_name, dialogue, lighting, audio_video, notes, formatting, last_edited_by, created_at, updated_at FROM script_lines_cache WHERE script_id = ? ORDER BY line_number',
         [scriptId]
       );
       
@@ -500,7 +500,7 @@ export class ScriptService {
 
     const versions = this.syncService.readData<any>(
       'script_versions',
-      'SELECT * FROM script_versions_cache WHERE script_id = ? ORDER BY version DESC',
+      'SELECT id, script_id, version, title, description, change_description, created_by, created_at FROM script_versions_cache WHERE script_id = ? ORDER BY version DESC',
       [scriptId]
     );
 
@@ -570,7 +570,7 @@ export class ScriptService {
       throw new Error('Script not found or permission denied');
     }
 
-    let query = 'SELECT * FROM script_line_history_cache WHERE script_id = ?';
+    let query = 'SELECT id, script_line_id, script_id, line_number, character_name, dialogue, lighting, audio_video, notes, formatting, change_type, change_description, edited_by, edited_at FROM script_line_history_cache WHERE script_id = ?';
     const params: any[] = [scriptId];
 
     if (lineNumber !== undefined) {
@@ -620,7 +620,7 @@ export class ScriptService {
     // 既存のロックをチェック
     const existingLocks = this.syncService.readData<any>(
       'script_locks',
-      'SELECT * FROM script_locks_cache WHERE script_id = ? AND (line_number = ? OR line_number IS NULL) AND expires_at > ?',
+      'SELECT id, script_id, line_number, locked_by, locked_at, expires_at FROM script_locks_cache WHERE script_id = ? AND (line_number = ? OR line_number IS NULL) AND expires_at > ?',
       [scriptId, lineNumber || null, new Date().toISOString()]
     );
 
@@ -720,7 +720,7 @@ export class ScriptService {
   public async getActiveEditSessions(scriptId: string): Promise<ScriptEditSession[]> {
     const sessions = this.syncService.readData<any>(
       'script_edit_sessions',
-      'SELECT * FROM script_edit_sessions_cache WHERE script_id = ? AND is_active = 1 AND last_activity > ?',
+      'SELECT id, script_id, user_id, user_name, started_at, last_activity, is_active FROM script_edit_sessions_cache WHERE script_id = ? AND is_active = 1 AND last_activity > ?',
       [scriptId, new Date(Date.now() - 5 * 60 * 1000).toISOString()] // 5分以内のアクティビティ
     );
 
@@ -800,7 +800,7 @@ export class ScriptService {
 
     const scenes = this.syncService.readData<any>(
       'script_scenes',
-      'SELECT * FROM script_scenes_cache WHERE script_id = ? ORDER BY scene_number',
+      'SELECT id, script_id, scene_number, title, description, start_line_number, end_line_number, created_by, created_at, updated_at FROM script_scenes_cache WHERE script_id = ? ORDER BY scene_number',
       [scriptId]
     );
 
@@ -873,7 +873,7 @@ export class ScriptService {
 
     const settings = this.syncService.readData<any>(
       'script_print_settings',
-      'SELECT * FROM script_print_settings_cache WHERE script_id = ? LIMIT 1',
+      'SELECT id, script_id, page_size, orientation, font_size, line_spacing, margin_top, margin_bottom, margin_left, margin_right, include_notes, include_lighting, include_audio_video, scene_breaks, created_by, created_at, updated_at FROM script_print_settings_cache WHERE script_id = ? LIMIT 1',
       [scriptId]
     );
 

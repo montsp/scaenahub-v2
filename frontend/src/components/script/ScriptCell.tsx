@@ -35,8 +35,13 @@ const ScriptCell: React.FC<ScriptCellProps> = ({
 
   // Update local value when prop changes
   useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
+    // When editing, show plain text; when not editing, show HTML
+    if (isEditing) {
+      setLocalValue(getPlainText(value));
+    } else {
+      setLocalValue(value);
+    }
+  }, [value, isEditing]);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -55,8 +60,18 @@ const ScriptCell: React.FC<ScriptCellProps> = ({
     setLocalValue(e.target.value);
   };
 
+  // Helper function to get plain text from HTML
+  const getPlainText = (html: string): string => {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+  };
+
   const handleBlur = () => {
-    if (localValue !== value) {
+    // When editing ends, compare with plain text version
+    const currentPlainText = getPlainText(value);
+    if (localValue !== currentPlainText) {
       onEdit(localValue);
     }
     if (onBlur) {
@@ -67,11 +82,12 @@ const ScriptCell: React.FC<ScriptCellProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !multiline && !e.shiftKey) {
       e.preventDefault();
-      if (localValue !== value) {
+      const currentPlainText = getPlainText(value);
+      if (localValue !== currentPlainText) {
         onEdit(localValue);
       }
     } else if (e.key === 'Escape') {
-      setLocalValue(value);
+      setLocalValue(getPlainText(value));
       (e.target as HTMLElement).blur();
     }
     
@@ -81,7 +97,101 @@ const ScriptCell: React.FC<ScriptCellProps> = ({
   const handleClick = () => {
     if (canEdit && !isEditing) {
       onFocus();
+      
+      // Emit cell selection event for format toolbar
+      const event = new CustomEvent('cellSelected', {
+        detail: {
+          lineId: dataLineId,
+          field: dataField,
+        }
+      });
+      window.dispatchEvent(event);
     }
+  };
+
+  const handleTextSelection = () => {
+    if (!canEdit || isEditing) return;
+    
+    // Small delay to ensure selection is complete
+    setTimeout(() => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim() && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const selectedText = selection.toString();
+        
+        // Get the cell element to work with its text content
+        const cellElement = document.querySelector(`[data-line-id="${dataLineId}"][data-field="${dataField}"]`);
+        if (!cellElement) return;
+        
+        // Get the plain text content of the cell
+        const plainTextContent = cellElement.textContent || '';
+        
+        // Calculate offsets based on plain text
+        let startOffset = 0;
+        let endOffset = 0;
+        
+        // Find the selected text position in the plain text
+        // Calculate position based on plain text content
+        // This approach works better with HTML content
+        const selectionRange = selection.getRangeAt(0);
+        
+        // Create a temporary element to get the text before selection
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cellElement.innerHTML;
+        
+        // Get all text nodes and calculate offset
+        const walker = document.createTreeWalker(
+          cellElement,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        
+        let currentOffset = 0;
+        let node;
+        let foundStart = false;
+        
+        while (node = walker.nextNode()) {
+          const nodeLength = node.textContent?.length || 0;
+          
+          if (node === selectionRange.startContainer) {
+            startOffset = currentOffset + selectionRange.startOffset;
+            foundStart = true;
+          }
+          
+          if (node === selectionRange.endContainer) {
+            endOffset = currentOffset + selectionRange.endOffset;
+            break;
+          }
+          
+          if (!foundStart) {
+            currentOffset += nodeLength;
+          }
+        }
+        
+        // Fallback: if we couldn't calculate based on DOM, use text search
+        if (!foundStart) {
+          const selectedTextIndex = plainTextContent.indexOf(selectedText);
+          if (selectedTextIndex !== -1) {
+            startOffset = selectedTextIndex;
+            endOffset = selectedTextIndex + selectedText.length;
+          }
+        }
+        
+        console.log('Text selected:', { selectedText, startOffset, endOffset, lineId: dataLineId, field: dataField, plainTextContent });
+        
+        // Emit text selection event for format toolbar
+        const event = new CustomEvent('textSelected', {
+          detail: {
+            lineId: dataLineId,
+            field: dataField,
+            text: selectedText,
+            startOffset: startOffset,
+            endOffset: endOffset,
+          }
+        });
+        window.dispatchEvent(event);
+      }
+    }, 10);
   };
 
   const cellContent = (
@@ -97,6 +207,7 @@ const ScriptCell: React.FC<ScriptCellProps> = ({
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onMouseUp={handleTextSelection}
       data-line-id={dataLineId}
       data-field={dataField}
     >
@@ -125,13 +236,23 @@ const ScriptCell: React.FC<ScriptCellProps> = ({
           />
         )
       ) : (
-        <div className="w-full h-full whitespace-pre-wrap break-words">
-          {value || (
+        value ? (
+          <div 
+            className="w-full h-full whitespace-pre-wrap break-words"
+            dangerouslySetInnerHTML={{ __html: value }}
+            style={{ 
+              // Hide HTML tags in contentEditable mode
+              WebkitUserSelect: 'text',
+              userSelect: 'text'
+            }}
+          />
+        ) : (
+          <div className="w-full h-full whitespace-pre-wrap break-words">
             <span className="text-gray-400 italic placeholder-text">
               {placeholder}
             </span>
-          )}
-        </div>
+          </div>
+        )
       )}
     </div>
   );

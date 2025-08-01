@@ -8,6 +8,7 @@ interface UseSocketOptions {
   onMessageDeleted?: (messageId: string) => void;
   onChannelUpdated?: (channel: any) => void;
   onChannelDeleted?: (channelId: string) => void;
+  onThreadReply?: (data: { parentMessageId: string; reply: Message }) => void;
 }
 
 export const useSocket = (options: UseSocketOptions = {}) => {
@@ -17,6 +18,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
     onMessageDeleted,
     onChannelUpdated,
     onChannelDeleted,
+    onThreadReply,
   } = options;
 
   useEffect(() => {
@@ -42,6 +44,11 @@ export const useSocket = (options: UseSocketOptions = {}) => {
       socket.on('channel-deleted', onChannelDeleted);
     }
 
+    // Thread events
+    if (onThreadReply) {
+      socket.on('thread_reply', onThreadReply);
+    }
+
     return () => {
       if (onMessage) {
         socket.off('message', onMessage);
@@ -58,8 +65,11 @@ export const useSocket = (options: UseSocketOptions = {}) => {
       if (onChannelDeleted) {
         socket.off('channel-deleted', onChannelDeleted);
       }
+      if (onThreadReply) {
+        socket.off('thread_reply', onThreadReply);
+      }
     };
-  }, [onMessage, onMessageUpdated, onMessageDeleted, onChannelUpdated, onChannelDeleted]);
+  }, [onMessage, onMessageUpdated, onMessageDeleted, onChannelUpdated, onChannelDeleted, onThreadReply]);
 
   const joinChannel = useCallback((channelId: string) => {
     socketService.joinChannel(channelId);

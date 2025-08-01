@@ -66,6 +66,16 @@ class SocketService {
   }
 
   // Message events
+  sendMessage(channelId: string, content: string, options?: { parentMessageId?: string }) {
+    if (this.socket) {
+      this.socket.emit('send_message', {
+        channelId,
+        content,
+        ...options
+      });
+    }
+  }
+
   onMessage(callback: (message: any) => void) {
     if (this.socket) {
       this.socket.on('message', callback);
@@ -81,6 +91,13 @@ class SocketService {
   onMessageDeleted(callback: (messageId: string) => void) {
     if (this.socket) {
       this.socket.on('message-deleted', callback);
+    }
+  }
+
+  // Thread events
+  onThreadReply(callback: (data: { parentMessageId: string; reply: any }) => void) {
+    if (this.socket) {
+      this.socket.on('thread_reply', callback);
     }
   }
 

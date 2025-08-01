@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Script } from '../types';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import UnifiedLayout from '../components/layout/UnifiedLayout';
 import ScriptViewer from '../components/script/ScriptViewer';
 import ScriptList from '../components/script/ScriptList';
 
@@ -10,6 +11,9 @@ const ScriptPage: React.FC = () => {
   const { scriptId } = useParams<{ scriptId?: string }>();
   const { user } = useAuth();
   const [selectedScript, setSelectedScript] = useState<Script | null>(null);
+  
+  // Debug logging
+  console.log('ScriptPage render - selectedScript:', selectedScript?.title || 'none');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +46,10 @@ const ScriptPage: React.FC = () => {
     setSelectedScript(script);
   };
 
+  const handleBackClick = () => {
+    setSelectedScript(null);
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -50,72 +58,54 @@ const ScriptPage: React.FC = () => {
     );
   }
 
+  // Script List Sidebar Content
+  const sidebarContent = (
+    <ScriptList
+      selectedScriptId={selectedScript?.id}
+      onScriptSelect={handleScriptSelect}
+      className="h-full"
+    />
+  );
+
   return (
-    <div className="h-screen flex bg-gray-50 overflow-hidden script-page">
-      {/* Script List Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-        <ScriptList
-          selectedScriptId={selectedScript?.id}
-          onScriptSelect={handleScriptSelect}
+    <UnifiedLayout 
+      showSidebar={true} 
+      sidebarContent={sidebarContent}
+      defaultSidebarOpen={!selectedScript} // Open when no script selected, closed when script selected
+      showBackButton={!!selectedScript}
+      onBackClick={handleBackClick}
+      autoCloseSidebarOnSelect={false} // Don't auto-close
+      key={selectedScript ? `script-${selectedScript.id}` : 'script-list'} // Force re-render on state change
+    >
+      {/* Main Script Content */}
+      {selectedScript ? (
+        <ScriptViewer
+          script={selectedScript}
+          user={user}
           className="h-full"
         />
-      </div>
+      ) : (
+        /* Script List View - Show sidebar content as main content on mobile */
+        <div className="flex-1 lg:hidden">
+          {sidebarContent}
+        </div>
+      )}
 
-      {/* Main Script Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {selectedScript ? (
-          <ScriptViewer
-            script={selectedScript}
-            user={user}
-            className="h-full"
-          />
-        ) : (
-          /* Welcome Screen */
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center max-w-md">
-              <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-200">
-                <div className="mb-6">
-                  <svg className="h-16 w-16 mx-auto text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                
-                <h4 className="text-xl font-semibold text-gray-800 mb-3">
-                  脚本ビューへようこそ！
-                </h4>
-                
-                <p className="text-gray-600 mb-6">
-                  演劇プロジェクトの脚本を閲覧・編集できます。
-                  左側のサイドバーから脚本を選択してください。
-                </p>
-
-                <div className="space-y-2 text-sm text-gray-500">
-                  <p>📝 脚本の閲覧・編集が可能です</p>
-                  <p>🎭 登場人物、台詞、照明、音響を管理</p>
-                  <p>👥 リアルタイムでの共同編集</p>
-                  <p>📱 iPad・PC・スマホ対応</p>
-                </div>
-              </div>
+      {error && (
+        <div className="absolute bottom-4 right-4 p-4 bg-red-50 border border-red-200 rounded-lg shadow-lg max-w-sm">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           </div>
-        )}
-
-        {error && (
-          <div className="p-4 bg-red-50 border-l-4 border-red-400">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </UnifiedLayout>
   );
 };
 

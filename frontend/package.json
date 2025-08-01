@@ -11,11 +11,16 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@types/react-textarea-autosize": "^4.3.6",
     "axios": "^1.11.0",
+    "emoji-picker-react": "^4.13.2",
     "lucide-react": "^0.534.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.7.1",
+    "react-textarea-autosize": "^8.5.9",
+    "remark-gfm": "^4.0.1",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {

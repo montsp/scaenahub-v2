@@ -264,7 +264,7 @@ export class ChannelService {
 
     // データベースから取得
     const channelsData = this.syncService.readData<any>('channels', 
-      'SELECT * FROM channels_cache WHERE id = ?', 
+      'SELECT id, name, description, type, category_id, position, is_private, permissions, allowed_roles, allowed_users, settings, created_by, created_at, updated_at FROM channels_cache WHERE id = ?', 
       [channelId]
     );
 
@@ -291,7 +291,7 @@ export class ChannelService {
 
     // データベースから取得
     const channelsData = this.syncService.readData<any>('channels', 
-      'SELECT * FROM channels_cache WHERE name = ?', 
+      'SELECT id, name, description, type, category_id, position, is_private, permissions, allowed_roles, allowed_users, settings, created_by, created_at, updated_at FROM channels_cache WHERE name = ?', 
       [name]
     );
 
@@ -317,7 +317,7 @@ export class ChannelService {
 
     // データベースから全チャンネルを取得
     const channelsData = this.syncService.readData<any>('channels', 
-      'SELECT * FROM channels_cache ORDER BY position ASC, name ASC'
+      'SELECT id, name, description, type, category_id, position, is_private, permissions, allowed_roles, allowed_users, settings, created_by, created_at, updated_at FROM channels_cache ORDER BY position ASC, name ASC'
     );
 
     const channels = channelsData.map(channelData => this.convertToChannel(channelData));
@@ -419,7 +419,7 @@ export class ChannelService {
       sortOrder = 'asc'
     } = options;
 
-    let sql = 'SELECT * FROM channels_cache WHERE 1=1';
+    let sql = 'SELECT id, name, description, type, category_id, position, is_private, permissions, allowed_roles, allowed_users, settings, created_by, created_at, updated_at FROM channels_cache WHERE 1=1';
     const params: any[] = [];
 
     // 検索クエリ
@@ -583,7 +583,7 @@ export class ChannelService {
 
     // データベースから取得
     const categoriesData = this.syncService.readData<any>('categories', 
-      'SELECT * FROM categories_cache WHERE id = ?', 
+      'SELECT id, name, position, created_at, updated_at FROM categories_cache WHERE id = ?', 
       [categoryId]
     );
 
@@ -595,7 +595,7 @@ export class ChannelService {
     
     // カテゴリ内のチャンネルを取得
     const channelsData = this.syncService.readData<any>('channels', 
-      'SELECT * FROM channels_cache WHERE category_id = ? ORDER BY position ASC', 
+      'SELECT id, name, description, type, category_id, position, is_private, permissions, allowed_roles, allowed_users, settings, created_by, created_at, updated_at FROM channels_cache WHERE category_id = ? ORDER BY position ASC', 
       [categoryId]
     );
 
@@ -624,7 +624,7 @@ export class ChannelService {
 
     // データベースから取得
     const categoriesData = this.syncService.readData<any>('categories', 
-      'SELECT * FROM categories_cache WHERE name = ?', 
+      'SELECT id, name, position, created_at, updated_at FROM categories_cache WHERE name = ?', 
       [name]
     );
 
@@ -639,7 +639,7 @@ export class ChannelService {
   public async getAllCategories(): Promise<CategoryWithChannels[]> {
     // データベースから全カテゴリを取得
     const categoriesData = this.syncService.readData<any>('categories', 
-      'SELECT * FROM categories_cache ORDER BY position ASC, name ASC'
+      'SELECT id, name, position, created_at, updated_at FROM categories_cache ORDER BY position ASC, name ASC'
     );
 
     const categories: CategoryWithChannels[] = [];

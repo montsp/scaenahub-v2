@@ -40,7 +40,7 @@ export class RoleService {
   }): Promise<Role> {
     // ロール名の重複チェック
     const existingRoles = this.syncService.readData<any>('roles', 
-      'SELECT * FROM roles_cache WHERE name = ?', 
+      'SELECT id, name, color, position, permissions, is_default, mentionable, created_at, updated_at FROM roles_cache WHERE name = ?', 
       [roleData.name]
     );
 
@@ -82,7 +82,7 @@ export class RoleService {
     // ロール名の重複チェック（名前を変更する場合）
     if (updates.name && updates.name !== role.name) {
       const existingRoles = this.syncService.readData<any>('roles', 
-        'SELECT * FROM roles_cache WHERE name = ? AND id != ?', 
+        'SELECT id, name, color, position, permissions, is_default, mentionable, created_at, updated_at FROM roles_cache WHERE name = ? AND id != ?', 
         [updates.name, roleId]
       );
 
@@ -160,7 +160,7 @@ export class RoleService {
 
   public async getRoleById(roleId: string): Promise<Role | null> {
     const rolesData = this.syncService.readData<any>('roles', 
-      'SELECT * FROM roles_cache WHERE id = ?', 
+      'SELECT id, name, color, position, permissions, is_default, mentionable, created_at, updated_at FROM roles_cache WHERE id = ?', 
       [roleId]
     );
 
@@ -173,7 +173,7 @@ export class RoleService {
 
   public async getRoleByName(roleName: string): Promise<Role | null> {
     const rolesData = this.syncService.readData<any>('roles', 
-      'SELECT * FROM roles_cache WHERE name = ?', 
+      'SELECT id, name, color, position, permissions, is_default, mentionable, created_at, updated_at FROM roles_cache WHERE name = ?', 
       [roleName]
     );
 
@@ -186,7 +186,7 @@ export class RoleService {
 
   public async getAllRoles(): Promise<Role[]> {
     const rolesData = this.syncService.readData<any>('roles', 
-      'SELECT * FROM roles_cache ORDER BY position DESC, name ASC'
+      'SELECT id, name, color, position, permissions, is_default, mentionable, created_at, updated_at FROM roles_cache ORDER BY position DESC, name ASC'
     );
 
     return rolesData.map(roleData => this.convertToRole(roleData));

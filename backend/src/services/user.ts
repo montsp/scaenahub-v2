@@ -168,7 +168,7 @@ export class UserService {
 
     // データベースから取得
     const usersData = this.syncService.readData<any>('users', 
-      'SELECT * FROM users_cache WHERE id = ? AND is_active = 1', 
+      'SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache WHERE id = ? AND is_active = 1', 
       [userId]
     );
 
@@ -195,7 +195,7 @@ export class UserService {
 
     // データベースから取得
     const usersData = this.syncService.readData<any>('users', 
-      'SELECT * FROM users_cache WHERE username = ? AND is_active = 1', 
+      'SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache WHERE username = ? AND is_active = 1', 
       [username]
     );
 
@@ -255,7 +255,7 @@ export class UserService {
       sortOrder = 'asc'
     } = options;
 
-    let sql = 'SELECT * FROM users_cache WHERE is_active = ?';
+    let sql = 'SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache WHERE is_active = ?';
     const params: any[] = [isActive ? 1 : 0];
 
     // 検索クエリ
@@ -443,7 +443,7 @@ export class UserService {
 
     // データベースから全ユーザーを取得
     const usersData = this.syncService.readData<any>('users', 
-      'SELECT * FROM users_cache WHERE is_active = 1 ORDER BY username ASC'
+      'SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache WHERE is_active = 1 ORDER BY username ASC'
     );
 
     const users = usersData.map(userData => this.convertToUser(userData));
@@ -480,7 +480,7 @@ export class UserService {
   // ロール名でユーザーを取得
   public async getUsersByRole(roleName: string): Promise<User[]> {
     const query = `
-      SELECT * FROM users_cache 
+      SELECT id, username, password_hash, roles, display_name, avatar, bio, online_status, custom_status, is_active, is_banned, last_seen, created_at, updated_at FROM users_cache 
       WHERE JSON_CONTAINS(roles, JSON_QUOTE(?))
       AND is_active = true
       AND is_banned = false

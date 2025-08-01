@@ -75,6 +75,13 @@ router.post('/channels/:channelId/messages', [
       }
     );
 
+    // Socket.ioでリアルタイム通知
+    const io = req.app.get('io');
+    if (io) {
+      // チャンネルの全ユーザーに新しいメッセージを通知
+      io.to(`channel:${channelId}`).emit('message', message);
+    }
+
     res.status(201).json({
       success: true,
       data: message
@@ -690,6 +697,87 @@ router.get('/channels/:channelId/messages/cursor', [
     res.status(400).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get messages'
+    });
+  }
+});
+
+// メッセージの返信取得（スレッド）
+router.get('/messages/:messageId/replies', [
+  authMiddleware,
+  param('messageId').isUUID().withMessage('Invalid message ID'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100'),
+  query('before')
+    .optional()
+    .isUUID()
+    .withMessage('Invalid before message ID'),
+  query('after')
+    .optional()
+    .isUUID()
+    .withMessage('Invalid after message ID'),
+  handleValidationErrors
+], async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { messageId } = req.params as { messageId: string };
+    const { limit, before, after } = req.query;
+    const userId = req.user!.id;
+    const userRoles = req.user!.roles;
+
+    const options: any = {};
+    if (limit) options.limit = parseInt(limit as string);
+    if (before) options.before = before as string;
+    if (after) options.after = after as string;
+
+    const replies = await messageService.getMessageReplies(messageId, userId, userRoles, options);
+
+    res.json({
+      success: true,
+      data: replies
+    });
+  } catch (error) {
+    console.error('Error getting message replies:', error);
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get message replies'
+    });
+  }
+});
+
+// メッセージに返信投稿（スレッド）
+router.post('/messages/:messageId/replies', [
+  authMiddleware,
+  param('messageId').isUUID().withMessage('Invalid message ID'),
+  body('content')
+    .isLength({ min: 1, max: parseInt(process.env.MAX_MESSAGE_LENGTH || '2000') })
+    .withMessage(`Reply content must be between 1 and ${process.env.MAX_MESSAGE_LENGTH || '2000'} characters`),
+  handleValidationErrors
+], async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { messageId } = req.params as { messageId: string };
+    const { content } = req.body;
+    const userId = req.user!.id;
+    const userRoles = req.user!.roles;
+
+    const reply = await messageService.createMessageReply(messageId, userId, content, userRoles);
+
+    // Socket.ioでリアルタイム通知
+    const io = req.app.get('io');
+    if (io) {
+      // スレッド返信も通常のメッセージイベントとして通知
+      io.to(`channel:${reply.channelId}`).emit('message', reply);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: reply
+    });
+  } catch (error) {
+    console.error('Error creating message reply:', error);
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create message reply'
     });
   }
 });

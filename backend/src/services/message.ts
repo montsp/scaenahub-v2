@@ -1,5 +1,6 @@
 import { MessageModel } from '../models/Message';
 import { DataSyncService } from './database/sync';
+import { SQLiteService } from './database/sqlite';
 import { AuthService } from './auth';
 import { UserService } from './user';
 import { RoleService } from './role';
@@ -11,6 +12,7 @@ import { Message, Mention, Reaction, Attachment, Embed } from '../types';
 export class MessageService {
   private static instance: MessageService;
   private syncService: DataSyncService;
+  private sqliteService: SQLiteService;
   private authService: AuthService;
   private userService: UserService;
   private roleService: RoleService;
@@ -21,6 +23,7 @@ export class MessageService {
 
   constructor() {
     this.syncService = DataSyncService.getInstance();
+    this.sqliteService = SQLiteService.getInstance();
     this.authService = AuthService.getInstance();
     this.userService = UserService.getInstance();
     this.roleService = RoleService.getInstance();
@@ -137,6 +140,11 @@ export class MessageService {
       message.user = user;
     }
 
+    // フロントエンド互換性のためparentIdを設定
+    if (message.parentMessageId) {
+      message.parentId = message.parentMessageId;
+    }
+
     // キャッシュ更新
     const channelMessages = this.messageCache.get(channelId) || [];
     channelMessages.push(message);
@@ -218,7 +226,7 @@ export class MessageService {
     // データベースから取得
     const rows = await this.syncService.readData(
       'messages',
-      'SELECT * FROM messages_cache WHERE id = ?',
+      'SELECT id, channel_id, user_id, content, type, thread_id, parent_message_id, mentions, reactions, attachments, embeds, is_pinned, is_edited, edited_at, created_at FROM messages_cache WHERE id = ?',
       [messageId]
     );
 
@@ -247,10 +255,12 @@ export class MessageService {
 
     const limit = options?.limit || 50;
     let query = `
-      SELECT m.*, u.username, u.display_name, u.roles
+      SELECT m.id, m.channel_id, m.user_id, m.content, m.type, m.thread_id, m.parent_message_id, 
+             m.mentions, m.reactions, m.attachments, m.embeds, m.is_pinned, m.is_edited, m.edited_at, m.created_at,
+             u.username, u.display_name, u.roles
       FROM messages_cache m
       LEFT JOIN users_cache u ON m.user_id = u.id
-      WHERE m.channel_id = ?
+      WHERE m.channel_id = ? AND m.parent_message_id IS NULL
     `;
     const params: any[] = [channelId];
 
@@ -515,7 +525,7 @@ export class MessageService {
   ): Promise<Message[]> {
     const limit = options?.limit || 50;
     let sqlQuery = `
-      SELECT * FROM messages_cache 
+      SELECT id, channel_id, user_id, content, type, thread_id, parent_message_id, mentions, reactions, attachments, embeds, is_pinned, is_edited, edited_at, created_at FROM messages_cache 
       WHERE content LIKE ? 
     `;
     const params: any[] = [`%${query}%`];
@@ -627,31 +637,60 @@ export class MessageService {
     }
 
     const limit = options?.limit || 50;
-    let query = 'SELECT * FROM messages_cache WHERE thread_id = ?';
-    const params: any[] = [threadId];
+    const messages = this.sqliteService.query(
+      `SELECT m.*, u.username, u.display_name, u.avatar, u.online_status
+       FROM messages_cache m
+       LEFT JOIN users_cache u ON m.user_id = u.id
+       WHERE m.thread_id = ? 
+       ${options?.before ? 'AND m.created_at < (SELECT created_at FROM messages_cache WHERE id = ?)' : ''}
+       ${options?.after ? 'AND m.created_at > (SELECT created_at FROM messages_cache WHERE id = ?)' : ''}
+       ORDER BY m.created_at ASC
+       LIMIT ?`,
+      [
+        threadId,
+        ...(options?.before ? [options.before] : []),
+        ...(options?.after ? [options.after] : []),
+        limit
+      ]
+    );
 
-    // ページネーション
-    if (options?.before) {
-      const beforeMessage = await this.getMessageById(options.before);
-      if (beforeMessage) {
-        query += ' AND created_at < ?';
-        params.push(beforeMessage.createdAt.toISOString());
-      }
+    // メッセージオブジェクトに変換
+    const threadMessages: Message[] = [];
+    for (const row of messages) {
+      const message = {
+        id: row.id,
+        channelId: row.channel_id,
+        userId: row.user_id,
+        content: row.content,
+        type: row.type || 'text',
+        parentMessageId: row.parent_message_id,
+        threadId: row.thread_id,
+        isPinned: Boolean(row.is_pinned),
+        createdAt: new Date(row.created_at),
+        editedAt: row.edited_at ? new Date(row.edited_at) : undefined,
+        isEdited: Boolean(row.edited_at),
+        mentions: [],
+        reactions: [],
+        attachments: [],
+        embeds: [],
+        user: row.username ? {
+          id: row.user_id,
+          username: row.username,
+          roles: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          profile: {
+            displayName: row.display_name || row.username,
+            avatar: row.avatar || '',
+            onlineStatus: (row.online_status as any) || 'offline'
+          }
+        } as any : undefined
+      };
+
+      threadMessages.push(message as Message);
     }
 
-    if (options?.after) {
-      const afterMessage = await this.getMessageById(options.after);
-      if (afterMessage) {
-        query += ' AND created_at > ?';
-        params.push(afterMessage.createdAt.toISOString());
-      }
-    }
-
-    query += ' ORDER BY created_at ASC LIMIT ?';
-    params.push(limit);
-
-    const rows = await this.syncService.readData('messages', query, params);
-    return rows.map(row => this.mapRowToMessage(row));
+    return threadMessages;
   }
 
   // チャンネル内のスレッド一覧取得
@@ -671,39 +710,65 @@ export class MessageService {
     }
 
     const limit = options?.limit || 20;
-    let query = `
-      SELECT DISTINCT m1.* FROM messages_cache m1
-      WHERE m1.channel_id = ? 
-      AND m1.thread_id IS NULL 
-      AND EXISTS (
-        SELECT 1 FROM messages_cache m2 
-        WHERE m2.thread_id = m1.id
-      )
-    `;
-    const params: any[] = [channelId];
+    const threads = this.sqliteService.query(
+      `SELECT DISTINCT m1.*, u.username, u.display_name, u.avatar, u.online_status
+       FROM messages_cache m1
+       LEFT JOIN users_cache u ON m1.user_id = u.id
+       WHERE m1.channel_id = ? 
+       AND m1.thread_id IS NULL 
+       AND EXISTS (
+         SELECT 1 FROM messages_cache m2 
+         WHERE m2.thread_id = m1.id
+       )
+       ${options?.before ? 'AND m1.created_at < (SELECT created_at FROM messages_cache WHERE id = ?)' : ''}
+       ${options?.after ? 'AND m1.created_at > (SELECT created_at FROM messages_cache WHERE id = ?)' : ''}
+       ORDER BY m1.created_at DESC
+       LIMIT ?`,
+      [
+        channelId,
+        ...(options?.before ? [options.before] : []),
+        ...(options?.after ? [options.after] : []),
+        limit
+      ]
+    );
 
-    // ページネーション
-    if (options?.before) {
-      const beforeMessage = await this.getMessageById(options.before);
-      if (beforeMessage) {
-        query += ' AND m1.created_at < ?';
-        params.push(beforeMessage.createdAt.toISOString());
-      }
+    // メッセージオブジェクトに変換
+    const threadMessages: Message[] = [];
+    for (const row of threads) {
+      const message = {
+        id: row.id,
+        channelId: row.channel_id,
+        userId: row.user_id,
+        content: row.content,
+        type: row.type || 'text',
+        parentMessageId: row.parent_message_id,
+        threadId: row.thread_id,
+        isPinned: Boolean(row.is_pinned),
+        createdAt: new Date(row.created_at),
+        editedAt: row.edited_at ? new Date(row.edited_at) : undefined,
+        isEdited: Boolean(row.edited_at),
+        mentions: [],
+        reactions: [],
+        attachments: [],
+        embeds: [],
+        user: row.username ? {
+          id: row.user_id,
+          username: row.username,
+          roles: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          profile: {
+            displayName: row.display_name || row.username,
+            avatar: row.avatar || '',
+            onlineStatus: (row.online_status as any) || 'offline'
+          }
+        } as any : undefined
+      };
+
+      threadMessages.push(message as Message);
     }
 
-    if (options?.after) {
-      const afterMessage = await this.getMessageById(options.after);
-      if (afterMessage) {
-        query += ' AND m1.created_at > ?';
-        params.push(afterMessage.createdAt.toISOString());
-      }
-    }
-
-    query += ' ORDER BY m1.created_at DESC LIMIT ?';
-    params.push(limit);
-
-    const rows = await this.syncService.readData('messages', query, params);
-    return rows.map(row => this.mapRowToMessage(row));
+    return threadMessages;
   }
 
   // スレッド統計情報取得
@@ -937,7 +1002,7 @@ export class MessageService {
       message.threadId = row.thread_id;
     }
     if (row.parent_message_id) {
-      message.parentMessageId = row.parent_message_id;
+      message.parentId = row.parent_message_id;
     }
     if (row.edited_at) {
       message.editedAt = new Date(row.edited_at);
@@ -966,5 +1031,216 @@ export class MessageService {
         channelMessages.splice(index, 1);
       }
     }
+  }
+
+  // メッセージの返信取得（スレッド）
+  public async getMessageReplies(
+    messageId: string,
+    userId: string,
+    userRoles: string[],
+    options?: {
+      limit?: number;
+      before?: string;
+      after?: string;
+    }
+  ): Promise<Message[]> {
+    // 親メッセージの存在確認
+    const parentMessage = await this.getMessageById(messageId);
+    if (!parentMessage) {
+      throw new Error('Parent message not found');
+    }
+
+    // チャンネルへの読み取り権限チェック
+    const canRead = await this.channelService.canUserReadChannel(parentMessage.channelId, userId, userRoles);
+    if (!canRead) {
+      throw new Error('Permission denied: Cannot read this channel');
+    }
+
+    // 返信メッセージを取得（parentMessageIdが一致するメッセージ）
+    const limit = options?.limit || 50;
+    const replies = this.sqliteService.query(
+      `SELECT m.*, u.username, u.display_name, u.avatar, u.online_status
+       FROM messages_cache m
+       LEFT JOIN users_cache u ON m.user_id = u.id
+       WHERE m.parent_message_id = ? 
+       ${options?.before ? 'AND m.created_at < (SELECT created_at FROM messages_cache WHERE id = ?)' : ''}
+       ${options?.after ? 'AND m.created_at > (SELECT created_at FROM messages_cache WHERE id = ?)' : ''}
+       ORDER BY m.created_at ASC
+       LIMIT ?`,
+      [
+        messageId,
+        ...(options?.before ? [options.before] : []),
+        ...(options?.after ? [options.after] : []),
+        limit
+      ]
+    );
+
+    // メッセージオブジェクトに変換
+    const messages: Message[] = [];
+    for (const row of replies) {
+      const message = {
+        id: row.id,
+        channelId: row.channel_id,
+        userId: row.user_id,
+        content: row.content,
+        type: row.type || 'text',
+        parentMessageId: row.parent_message_id,
+        threadId: row.thread_id,
+        isPinned: Boolean(row.is_pinned),
+        createdAt: new Date(row.created_at),
+        editedAt: row.edited_at ? new Date(row.edited_at) : undefined,
+        isEdited: Boolean(row.edited_at),
+        mentions: [],
+        reactions: [],
+        attachments: [],
+        embeds: [],
+        user: row.username ? {
+          id: row.user_id,
+          username: row.username,
+          roles: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          profile: {
+            displayName: row.display_name || row.username,
+            avatar: row.avatar || '',
+            onlineStatus: (row.online_status as any) || 'offline'
+          }
+        } as any : undefined
+      };
+
+      messages.push(message as Message);
+    }
+
+    return messages;
+  }
+
+  // メッセージに返信投稿（スレッド）
+  public async createMessageReply(
+    parentMessageId: string,
+    userId: string,
+    content: string,
+    userRoles: string[]
+  ): Promise<Message> {
+    // 親メッセージの存在確認
+    const parentMessage = await this.getMessageById(parentMessageId);
+    if (!parentMessage) {
+      throw new Error('Parent message not found');
+    }
+
+    // チャンネルへの書き込み権限チェック
+    const canWrite = await this.channelService.canUserWriteToChannel(parentMessage.channelId, userId, userRoles);
+    if (!canWrite) {
+      throw new Error('Permission denied: Cannot write to this channel');
+    }
+
+    // ユーザーのタイムアウト状態チェック
+    const moderationService = this.getModerationService();
+    const isTimedOut = await moderationService.isUserTimedOut(userId);
+    if (isTimedOut) {
+      throw new Error('You are currently timed out and cannot send messages');
+    }
+
+    // メンションを抽出
+    const mentions = await this.resolveMentions(content);
+
+    // リンクプレビューを生成
+    const urls = MessageModel.extractUrls(content);
+    const embeds: Embed[] = [];
+    if (urls.length > 0) {
+      const linkPreviews = await this.linkPreviewService.generatePreviews(urls);
+      embeds.push(...linkPreviews);
+    }
+
+    // 返信メッセージ作成
+    const replyMessage = MessageModel.create({
+      channelId: parentMessage.channelId,
+      userId,
+      content,
+      type: 'text',
+      parentMessageId,
+      mentions,
+      embeds
+    });
+
+    // データベースに保存（SQLiteのmessages_cacheテーブル構造に合わせる）
+    this.sqliteService.execute(
+      `INSERT INTO messages_cache (
+        id, channel_id, user_id, content, type, parent_message_id,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        replyMessage.id,
+        replyMessage.channelId,
+        replyMessage.userId,
+        replyMessage.content,
+        replyMessage.type,
+        replyMessage.parentMessageId,
+        replyMessage.createdAt.toISOString()
+      ]
+    );
+
+    // メンション情報を保存（簡略化）
+    if (mentions.length > 0) {
+      for (const mention of mentions) {
+        const mentionId = require('uuid').v4();
+        this.sqliteService.execute(
+          'INSERT INTO mentions (id, message_id, user_id, type, created_at) VALUES (?, ?, ?, ?, ?)',
+          [mentionId, replyMessage.id, (mention as any).userId, mention.type, new Date().toISOString()]
+        );
+      }
+    }
+
+    // 埋め込み情報を保存（簡略化）
+    if (embeds.length > 0) {
+      for (const embed of embeds) {
+        const embedId = require('uuid').v4();
+        this.sqliteService.execute(
+          'INSERT INTO embeds (id, message_id, type, title, description, url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [embedId, replyMessage.id, embed.type, embed.title, embed.description, embed.url, new Date().toISOString()]
+        );
+      }
+    }
+
+    // ユーザー情報を取得して追加
+    const user = await this.userService.getUserById(userId);
+    if (user) {
+      replyMessage.user = {
+        id: user.id,
+        username: user.username,
+        roles: user.roles,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        profile: {
+          displayName: user.profile?.displayName || user.username,
+          avatar: user.profile?.avatar || '',
+          onlineStatus: user.profile?.onlineStatus || 'offline'
+        }
+      } as any;
+    }
+
+    // フロントエンド互換性のためparentIdを設定
+    if (replyMessage.parentMessageId) {
+      replyMessage.parentId = replyMessage.parentMessageId;
+    }
+
+    // 親メッセージの返信数を更新
+    await this.updateMessageReplyCount(parentMessageId);
+
+    // キャッシュを更新
+    this.updateMessageInCache(replyMessage);
+
+    return replyMessage;
+  }
+
+  // メッセージの返信数を更新（SQLiteテーブルにreply_countカラムが存在しないため、この機能は無効化）
+  private async updateMessageReplyCount(messageId: string): Promise<void> {
+    // SQLiteのmessages_cacheテーブルにreply_countカラムが存在しないため、
+    // 返信数の更新は行わない。必要に応じて動的に計算する。
+    // const replyCount = this.sqliteService.query(
+    //   'SELECT COUNT(*) as count FROM messages_cache WHERE parent_message_id = ?',
+    //   [messageId]
+    // );
+    // const count = replyCount[0]?.count || 0;
+    // 実際のカラムが存在しないため、この更新は無効化
   }
 }

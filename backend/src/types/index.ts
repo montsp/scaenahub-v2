@@ -73,6 +73,7 @@ export interface Message {
   type: 'text' | 'file' | 'system' | 'announcement';
   threadId?: string;
   parentMessageId?: string;
+  parentId?: string; // フロントエンド互換性のため
   mentions: Mention[];
   reactions: Reaction[];
   attachments: Attachment[];

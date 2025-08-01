@@ -7,16 +7,12 @@ import { useApi } from '../../hooks/useApi';
 interface ChannelListProps {
   selectedChannelId?: string;
   onChannelSelect: (channel: Channel) => void;
-  onToggleSidebar?: () => void;
-  sidebarCollapsed?: boolean;
   className?: string;
 }
 
 const ChannelList: React.FC<ChannelListProps> = ({
   selectedChannelId,
   onChannelSelect,
-  onToggleSidebar,
-  sidebarCollapsed = false,
   className = '',
 }) => {
   const { user } = useAuth();
@@ -125,10 +121,6 @@ const ChannelList: React.FC<ChannelListProps> = ({
   };
 
   const canCreateChannels = user?.roles?.includes('admin') || user?.roles?.includes('moderator');
-
-  if (sidebarCollapsed) {
-    return null;
-  }
 
   const loading = channelsLoading || categoriesLoading;
   const error = channelsError || categoriesError;

@@ -202,6 +202,19 @@ class ApiService {
     return response.data;
   }
 
+  // Thread endpoints
+  async getThreadReplies(parentMessageId: string): Promise<ApiResponse<Message[]>> {
+    const response: AxiosResponse<ApiResponse<Message[]>> = await this.api.get(`/messages/${parentMessageId}/replies`);
+    return response.data;
+  }
+
+  async sendThreadReply(parentMessageId: string, content: string): Promise<ApiResponse<Message>> {
+    const response: AxiosResponse<ApiResponse<Message>> = await this.api.post(`/messages/${parentMessageId}/replies`, {
+      content,
+    });
+    return response.data;
+  }
+
   // Search endpoints
   async searchMessages(query: string, channelId?: string, userId?: string): Promise<PaginatedResponse<Message>> {
     const params = new URLSearchParams({ query });
@@ -209,6 +222,18 @@ class ApiService {
     if (userId) params.append('userId', userId);
     
     const response: AxiosResponse<PaginatedResponse<Message>> = await this.api.get(`/search/messages?${params}`);
+    return response.data;
+  }
+
+  async searchUsers(query: string): Promise<ApiResponse<User[]>> {
+    const params = new URLSearchParams({ query });
+    const response: AxiosResponse<ApiResponse<User[]>> = await this.api.get(`/users/search?${params}`);
+    return response.data;
+  }
+
+  // User endpoints
+  async getUsers(): Promise<ApiResponse<User[]>> {
+    const response: AxiosResponse<ApiResponse<User[]>> = await this.api.get('/users');
     return response.data;
   }
 
@@ -277,6 +302,33 @@ class ApiService {
 
   async deleteScriptLine(scriptId: string, lineNumber: number): Promise<ApiResponse> {
     const response: AxiosResponse<ApiResponse> = await this.api.delete(`/scripts/${scriptId}/lines/${lineNumber}`);
+    return response.data;
+  }
+
+  // Script permissions
+  async getScriptPermissions(scriptId: string): Promise<ApiResponse<any[]>> {
+    const response: AxiosResponse<ApiResponse<any[]>> = await this.api.get(`/scripts/${scriptId}/permissions`);
+    return response.data;
+  }
+
+  async addScriptPermission(data: any): Promise<ApiResponse<any>> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post(`/scripts/${data.scriptId}/permissions`, data);
+    return response.data;
+  }
+
+  async removeScriptPermission(permissionId: string): Promise<ApiResponse> {
+    const response: AxiosResponse<ApiResponse> = await this.api.delete(`/permissions/${permissionId}`);
+    return response.data;
+  }
+
+  // Script history
+  async getScriptHistory(scriptId: string): Promise<ApiResponse<any[]>> {
+    const response: AxiosResponse<ApiResponse<any[]>> = await this.api.get(`/scripts/${scriptId}/history`);
+    return response.data;
+  }
+
+  async getScriptVersion(scriptId: string, version: number): Promise<ApiResponse<any>> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get(`/scripts/${scriptId}/versions/${version}`);
     return response.data;
   }
 
