@@ -65,7 +65,7 @@ app.use('/api', messageRoutes);
 app.use('/api/moderation', moderationRoutes);
 
 // ヘルスチェックルート
-app.use('/', healthRoutes);
+app.use('/health', healthRoutes);
 
 // エラーハンドリング
 app.use(notFoundHandler);
