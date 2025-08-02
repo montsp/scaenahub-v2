@@ -4,7 +4,27 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Custom plugin for SPA routing
+    {
+      name: 'spa-fallback',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          // Skip API routes and static assets
+          if (req.url?.startsWith('/api') || 
+              req.url?.startsWith('/socket.io') ||
+              req.url?.includes('.')) {
+            return next();
+          }
+          
+          // For all other routes, serve index.html
+          req.url = '/';
+          next();
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
